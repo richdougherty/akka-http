@@ -73,7 +73,7 @@ abstract class ResponseParserSpec(mode: String, newLine: String) extends FreeSpe
         closeAfterResponseCompletion shouldEqual Seq(false)
       }
 
-      "a response with a custom status code" in new Test {
+      "a response with a single custom status code" in new Test {
         override def parserSettings: ParserSettings =
           super.parserSettings.withCustomStatusCodes(ServerOnTheMove)
 
@@ -81,6 +81,17 @@ abstract class ResponseParserSpec(mode: String, newLine: String) extends FreeSpe
           |Content-Length: 0
           |
           |""" should parseTo(HttpResponse(ServerOnTheMove))
+        closeAfterResponseCompletion shouldEqual Seq(false)
+      }
+
+      "a response with flexible custom status codes" in new Test {
+        override def parserSettings: ParserSettings =
+          super.parserSettings.withCustomStatusCodesWithReason((code, reason) ⇒ Some(StatusCodes.custom(code, reason)))
+
+        """HTTP/1.1 345 Foo bar
+          |Content-Length: 0
+          |
+          |""" should parseTo(HttpResponse(StatusCodes.custom(359, "Foo bar")))
         closeAfterResponseCompletion shouldEqual Seq(false)
       }
 

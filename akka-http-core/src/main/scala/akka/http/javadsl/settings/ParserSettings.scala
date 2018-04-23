@@ -19,6 +19,8 @@ import scala.collection.JavaConverters._
 import akka.http.javadsl.model.{ HttpMethod, MediaType, StatusCode, Uri }
 import com.typesafe.config.Config
 
+import scala.compat.java8.OptionConverters
+
 /**
  * Public API but not intended for subclassing
  */
@@ -43,6 +45,7 @@ abstract class ParserSettings private[akka] () extends BodyPartParser.Settings {
   def headerValueCacheLimits: Map[String, Int]
   def getCustomMethods: java.util.function.Function[String, Optional[HttpMethod]]
   def getCustomStatusCodes: java.util.function.Function[Int, Optional[StatusCode]]
+  def getCustomStatusCodesWithReason: akka.japi.function.Function2[Int, String, Optional[StatusCode]]
   def getCustomMediaTypes: akka.japi.function.Function2[String, String, Optional[MediaType]]
   def getModeledHeaderParsing: Boolean
 
@@ -62,6 +65,27 @@ abstract class ParserSettings private[akka] () extends BodyPartParser.Settings {
   def withIllegalHeaderWarnings(newValue: Boolean): ParserSettings = self.copy(illegalHeaderWarnings = newValue)
   def withErrorLoggingVerbosity(newValue: ParserSettings.ErrorLoggingVerbosity): ParserSettings = self.copy(errorLoggingVerbosity = newValue.asScala)
   def withHeaderValueCacheLimits(newValue: ju.Map[String, Int]): ParserSettings = self.copy(headerValueCacheLimits = newValue.asScala.toMap)
+  def withCustomMethods(newValue: java.util.function.Function[String, Optional[HttpMethod]]): ParserSettings = {
+    val scalaFunc: String ⇒ Option[akka.http.scaladsl.model.HttpMethod] = { str: String ⇒
+      val javaOpt = newValue(str).asInstanceOf[Optional[akka.http.scaladsl.model.HttpMethod]]
+      OptionConverters.toScala(javaOpt)
+    }
+    self.withCustomMethods(scalaFunc)
+  }
+  def withCustomStatusCodesWithReason(newValue: akka.japi.function.Function2[Int, String, Optional[StatusCode]]): ParserSettings = {
+    val scalaFunc: (Int, String) ⇒ Option[akka.http.scaladsl.model.StatusCode] = { i: Int ⇒
+      val javaOpt = newValue(i).asInstanceOf[Optional[akka.http.scaladsl.model.StatusCode]]
+      OptionConverters.toScala(javaOpt)
+    }
+    self.withCustomStatusCodes(scalaFunc)
+  }
+  def withCustomMediaTypes(newValue: akka.japi.function.Function2[String, String, Optional[MediaType]]): ParserSettings = {
+    val scalaFunc: (String, String) ⇒ Option[akka.http.scaladsl.model.MediaType] = { (mainType: String, subType: String) ⇒
+      val javaOpt = newValue(mainType, subType).asInstanceOf[Optional[akka.http.scaladsl.model.MediaType]]
+      OptionConverters.toScala(javaOpt)
+    }
+    self.withCustomMediaTypes(scalaFunc)
+  }
   def withIncludeTlsSessionInfoHeader(newValue: Boolean): ParserSettings = self.copy(includeTlsSessionInfoHeader = newValue)
   def withModeledHeaderParsing(newValue: Boolean): ParserSettings = self.copy(modeledHeaderParsing = newValue)
 

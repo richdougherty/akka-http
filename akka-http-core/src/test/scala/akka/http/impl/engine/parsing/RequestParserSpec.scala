@@ -140,13 +140,24 @@ abstract class RequestParserSpec(mode: String, newLine: String) extends FreeSpec
         closeAfterResponseCompletion shouldEqual Seq(false)
       }
 
-      "with a custom HTTP method" in new Test {
+      "with a single custom HTTP method" in new Test {
         override protected def parserSettings: ParserSettings =
           super.parserSettings.withCustomMethods(BOLT)
 
         """BOLT / HTTP/1.0
           |
           |""" should parseTo(HttpRequest(BOLT, "/", protocol = `HTTP/1.0`))
+        closeAfterResponseCompletion shouldEqual Seq(true)
+      }
+
+      "with flexible custom HTTP methods" in new Test {
+        override protected def parserSettings: ParserSettings =
+          super.parserSettings.withCustomMethods((name: String) ⇒ Some(HttpMethod.custom(name)))
+
+        """BOLT /foo HTTP/1.1
+          |Host: x
+          |
+          |""" should parseTo(HttpRequest(HttpMethod.custom("BOLT"), "/foo", protocol = `HTTP/1.1`))
         closeAfterResponseCompletion shouldEqual Seq(true)
       }
 

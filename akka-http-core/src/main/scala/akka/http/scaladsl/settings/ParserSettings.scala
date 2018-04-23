@@ -42,6 +42,7 @@ abstract class ParserSettings private[akka] () extends akka.http.javadsl.setting
   def includeTlsSessionInfoHeader: Boolean
   def customMethods: String ⇒ Option[HttpMethod]
   def customStatusCodes: Int ⇒ Option[StatusCode]
+  def customStatusCodesWithReason: (Int, String) ⇒ Option[StatusCode]
   def customMediaTypes: MediaTypes.FindCustom
   def modeledHeaderParsing: Boolean
 
@@ -73,7 +74,7 @@ abstract class ParserSettings private[akka] () extends akka.http.javadsl.setting
     override def apply(mainType: String, subType: String): Optional[model.MediaType] =
       OptionConverters.toJava(customMediaTypes(mainType, subType))
   }
-  def getModeledHeaderParsing: Boolean = modeledHeaderParsing
+  override def getModeledHeaderParsing: Boolean = modeledHeaderParsing
 
   // override for more specific return type
   override def withMaxUriLength(newValue: Int): ParserSettings = self.copy(maxUriLength = newValue)
@@ -94,17 +95,21 @@ abstract class ParserSettings private[akka] () extends akka.http.javadsl.setting
   def withCookieParsingMode(newValue: ParserSettings.CookieParsingMode): ParserSettings = self.copy(cookieParsingMode = newValue)
   def withErrorLoggingVerbosity(newValue: ParserSettings.ErrorLoggingVerbosity): ParserSettings = self.copy(errorLoggingVerbosity = newValue)
   def withHeaderValueCacheLimits(newValue: Map[String, Int]): ParserSettings = self.copy(headerValueCacheLimits = newValue)
+
+  def withCustomMethods(newValue: String ⇒ Option[akka.http.scaladsl.model.HttpMethod]): ParserSettings = self.copy(customMethods = newValue)
   def withCustomMethods(methods: HttpMethod*): ParserSettings = {
     val map = methods.map(m ⇒ m.name → m).toMap
-    self.copy(customMethods = map.get)
+    self.withCustomMethods(map.get(_))
   }
+  def withCustomStatusCodesWithReason(newValue: (Int, String) ⇒ Option[akka.http.scaladsl.model.StatusCode]): ParserSettings = self.copy(customStatusCodes = newValue)
   def withCustomStatusCodes(codes: StatusCode*): ParserSettings = {
     val map = codes.map(c ⇒ c.intValue → c).toMap
-    self.copy(customStatusCodes = map.get)
+    self.withCustomStatusCodesWithReason((code, reason) => map.get(code))
   }
+  def withCustomMediaTypes(newValue: MediaTypes.FindCustom): ParserSettings = self.copy(customMediaTypes = newValue)
   def withCustomMediaTypes(types: MediaType*): ParserSettings = {
     val map = types.map(c ⇒ (c.mainType, c.subType) → c).toMap
-    self.copy(customMediaTypes = (main, sub) ⇒ map.get((main, sub)))
+    self.withCustomMediaTypes((main, sub) ⇒ map.get((main, sub)))
   }
   def withIllegalResponseHeaderValueProcessingMode(newValue: ParserSettings.IllegalResponseHeaderValueProcessingMode): ParserSettings =
     self.copy(illegalResponseHeaderValueProcessingMode = newValue)

@@ -34,7 +34,7 @@ private[akka] final case class ParserSettingsImpl(
   includeTlsSessionInfoHeader:              Boolean,
   modeledHeaderParsing:                     Boolean,
   customMethods:                            String ⇒ Option[HttpMethod],
-  customStatusCodes:                        Int ⇒ Option[StatusCode],
+  customStatusCodesWithReason:              (Int, String) ⇒ Option[StatusCode],
   customMediaTypes:                         MediaTypes.FindCustom)
   extends akka.http.scaladsl.settings.ParserSettings {
 
@@ -55,6 +55,8 @@ private[akka] final case class ParserSettingsImpl(
 
   override def productPrefix = "ParserSettings"
 
+  def customStatusCodes: Int ⇒ Option[StatusCode] = (code: Int) => customStatusCodesWithReason(code, "")
+
   // optimization: if we see the default value as defined below, we know it hasn't been changed
   override def areNoCustomMediaTypesDefined: Boolean = customMediaTypes eq ParserSettingsImpl.noCustomMediaTypes
 }
@@ -62,7 +64,7 @@ private[akka] final case class ParserSettingsImpl(
 object ParserSettingsImpl extends SettingsCompanion[ParserSettingsImpl]("akka.http.parsing") {
 
   private[this] val noCustomMethods: String ⇒ Option[HttpMethod] = ConstantFun.scalaAnyToNone
-  private[this] val noCustomStatusCodes: Int ⇒ Option[StatusCode] = ConstantFun.scalaAnyToNone
+  private[this] val noCustomStatusCodes: (Int, String) ⇒ Option[StatusCode] = ConstantFun.scalaAnyTwoToNone
   private[ParserSettingsImpl] val noCustomMediaTypes: (String, String) ⇒ Option[MediaType] = ConstantFun.scalaAnyTwoToNone
 
   def fromSubConfig(root: Config, inner: Config) = {
